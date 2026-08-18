@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## v1.1.0 (2026-08-18)
+
+- **ZCode 安装目标**：install.sh 支持 ZCode（探测 `~/.zcode` → 安装到 `~/.zcode/skills/repo-cloud-alignment`），README 补手动复制 ZCode 路径，发布页一键命令即可装到 ZCode
+
 ## v1.0.0 (2026-08-18)
 
 - 初版：repo 多仓强制拉齐云端（丢弃本地改动）+ 精确复现 Jenkins 构建（增量对齐）

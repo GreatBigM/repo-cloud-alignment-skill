@@ -18,7 +18,8 @@ curl -fsSL https://gitee.com/GreatBigM/repo-cloud-alignment-skill/raw/main/insta
 
 ```bash
 git clone --depth 1 https://gitee.com/GreatBigM/repo-cloud-alignment-skill.git /tmp/rca-skill
-cp -r /tmp/rca-skill/references /tmp/rca-skill/SKILL.md /tmp/rca-skill/CHANGELOG.md ~/.hermes/skills/repo-cloud-alignment/
+cp -r /tmp/rca-skill/references /tmp/rca-skill/SKILL.md /tmp/rca-skill/CHANGELOG.md ~/.hermes/skills/repo-cloud-alignment/   # Hermes
+cp -r /tmp/rca-skill/references /tmp/rca-skill/SKILL.md /tmp/rca-skill/CHANGELOG.md ~/.zcode/skills/repo-cloud-alignment/   # ZCode
 ```
 
 ### 方式 3：GitHub 镜像（海外备选）
