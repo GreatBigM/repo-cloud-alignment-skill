@@ -4,7 +4,7 @@ description: repo 多仓项目强制拉齐云端（丢弃本地改动）— 全�
 version: 1.1.0
 category: devops
 metadata:
-  hermes:
+  agent:
     triggers: [拉齐云端, 强制拉齐, 丢弃本地改动, 以云端为准, 对齐主干, 主干最新, 删代码重拉, 全仓对齐]
 ---
 
