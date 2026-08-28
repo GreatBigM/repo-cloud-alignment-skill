@@ -13,3 +13,10 @@
 - 增量对齐构建基线（08-18 新增）：Jenkins artifact 下载锁 revision manifest → 对比 HEAD 只 checkout 差异仓 → changeid 链 cherry-pick；repo download 拒 MERGED change 须手动 cherry-pick；FETCH_HEAD 覆盖坑
 - 交叉仓 undefined reference 诊断链（IMP_Buf_Vaddr2Paddr 案例）
 - 来源：2026-08-17 SDK 交叉仓对齐 + 2026-08-18 构建 #549 增量对齐实证
+
+## 1.1.1 (2026-08-28)
+
+### Added
+
+- install.sh 新增 pi 安装目标（探测 `~/.pi/agent` → 安装到 `~/.pi/agent/skills/<skill>`，pi 自动发现）
+- 版本 1.1.0 → 1.1.1

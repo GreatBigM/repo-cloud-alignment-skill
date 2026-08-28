@@ -1,7 +1,7 @@
 ---
 name: repo-cloud-alignment
 description: repo 多仓项目强制拉齐云端（丢弃本地改动）— 全仓对齐、分支删除重建、交叉仓 API 依赖编译诊断
-version: 1.1.0
+version: 1.1.1
 category: devops
 metadata:
   agent:
