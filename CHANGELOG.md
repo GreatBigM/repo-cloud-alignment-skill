@@ -1,4 +1,11 @@
 # CHANGELOG
+## 1.1.2 (2026-09-28)
+
+### Changed
+
+- 回灌本机 Hermes 副本的实测修正：意图取舍（冲掉 vs 保留，默认冲掉）+ 只动点名仓 + 新增 references/push-readiness-and-change-id-repair.md
+- 版本 1.1.1 → 1.1.2
+
 
 ## v1.1.0 (2026-08-18)
 
