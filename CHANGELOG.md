@@ -1,4 +1,14 @@
 # CHANGELOG
+
+## 1.1.3 (2026-09-29)
+
+### Fixed
+
+- 修正「`repo sync` 不删本地 commit」的表述：全仓 sync 会把跟踪**移动分支**（如 `m/smart`）的仓 checkout 走，本地提交从分支引用上被摘掉、只能靠 `git reflog` 找回（09-29 三十余仓事故实证：rootfs 8 / factory_test 2 / c_mi_ipc 1 / toolchain 3 / config 1 笔）
+- 新增纪律：要更新单仓改用该仓 `git fetch`，不要跑全仓 `repo sync`；抢救用 `git branch <name> <sha>` 而非 `reset --hard`
+- 版本 1.1.2 → 1.1.3
+
+
 ## 1.1.2 (2026-09-28)
 
 ### Changed

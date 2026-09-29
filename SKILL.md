@@ -1,7 +1,7 @@
 ---
 name: repo-cloud-alignment
 description: repo 多仓项目强制拉齐云端（丢弃本地改动）— 全仓对齐、分支删除重建、交叉仓 API 依赖编译诊断
-version: 1.1.2
+version: 1.1.3
 category: devops
 metadata:
   agent:
@@ -50,7 +50,7 @@ EOF
 
 机制（必须向用户讲清，否则他会以为同步无效）：
 
-- **`repo sync` 不删本地 commit**。它检测到本地分支有「published but not merged」的 commit 就拒绝 checkout，只切工作树、一个 ref 都不动。
+- **`repo sync` 不删本地 commit，但会「切走」**（2026-09-29 三十余仓事故修正本行旧说法）：清单里跟踪**移动分支**（如 `m/smart`）的仓，全仓 sync 会直接 checkout 到远端、把本地提交从分支引用上摘掉——commit 对象还在（`git reflog` 可逐仓找回），但工作树看着就像「丢了」。**纪律：不要对这些仓跑全仓 `repo sync`；要更新单仓就对该仓 `git fetch`。** 抢救法：`git reflog` 定位 commit → `git branch <name> <sha>` 指回去（`reset --hard` 可能被权限拦、且会丢当前态）。
 - 所以 `git checkout --detach` 只是绕过保护让 sync 能跑；真冲掉要显式做：
   ```bash
   git branch -D <本地分支>          # 单仓冲掉（或 git update-ref 重置到 origin/m/smart）
