@@ -1,11 +1,11 @@
 ---
 name: repo-cloud-alignment
-description: repo 多仓项目强制拉齐云端（丢弃本地改动）— 全仓对齐、分支删除重建、交叉仓 API 依赖编译诊断
-version: 1.1.3
+description: repo 多仓项目云端对齐与 manifest 切换（-m）— 全仓对齐、分支重建、整树 sync 坑、交叉仓依赖诊断
+version: 1.2.0
 category: devops
 metadata:
   agent:
-    triggers: [拉齐云端, 强制拉齐, 丢弃本地改动, 以云端为准, 对齐主干, 主干最新, 删代码重拉, 全仓对齐]
+    triggers: [拉齐云端, 强制拉齐, 丢弃本地改动, 以云端为准, 对齐主干, 主干最新, 删代码重拉, 全仓对齐, 切manifest, 换manifest, manifest回退, repo init -m, 整树sync, 切回常规分支, repo start --all, 分支没切, index.lock]
 ---
 
 # repo 多仓项目云端对齐
@@ -15,6 +15,7 @@ metadata:
 ## 核心原则
 
 1. **全仓覆盖**：对齐必须扫全部项目，不能只看有分支的仓。repo status 首屏会截断；detached/NO BRANCH 仓也能带本地 commit（08-17 实锤：third_party/rootfs 带 4 个本地 commit 未出现在首屏）。
+   ⚠️ **`repo forall` 自身也会漏项**：它跳过 checkout 失败（未成功初始化）的项目 —— 整树 sync 报过 `Failing repos: <x>` 之后，拿 `repo forall -c 'git status -sb'` 去数「落后项目数」会得到**假 0**（实测：报 0 而实际该仓 behind 1）。全树状态以 repo 自己的收尾语为准（`repo sync has finished successfully.` ↔ `Unable to fully sync the tree … Failing repos: …`），个别仓一律 `git -C <repo> status -sb` 直查。
 2. **SDK 仓最易漏 = 编译必炸**：交叉仓 API 依赖——应用仓引用新 API，提供方在 SDK 仓（third_party/rootfs）的新 commit。漏拉 SDK 仓 → 编译 undefined reference（案例：IMP_Buf_Vaddr2Paddr）。
 3. **编译是最终门禁**：git 层面 HEAD 对齐 ≠ 能编译。拉齐后必须全量编译验证。
 4. **manifest 决定目标**：锁 revision 的 manifest（如 HM6502-Master-Build-SI-401）= 构建基线（旧）；manifest-smart.xml 不锁 revision = 跟 m/smart 主干最新。要「主干最新」必须换 manifest，删代码重拉（rm -rf + repo init -m manifest-smart.xml + repo sync）最干净，逐仓 git reset 会留下 SDK 漂移。
@@ -44,6 +45,43 @@ EOF
 
 注意：此方式不改 .repo/manifest.xml 声明（仍指向原 manifest）。工作树=构建精确代码，但任何 repo sync 会漂回声明的 manifest 基线并丢 cherry-pick。要焊死基线：把 jb_manifest.xml 拷入 .repo/manifests/ 并改 include（副作用：sync 清 cherry-pick 需重打）。
 
+### Step 0c: 切 manifest（换 `-m`：任务期冻结 manifest → 常规 manifest）
+
+任务期常用 SI 冻结 manifest（逐项目钉死 revision），任务完成后切回常规 manifest（如 `manifest-smart.xml`，不锁 revision）。整树动作，**先出声再动手**（会把全树从旧 revision 搬到新 tip）。
+
+```bash
+cd <项目树>
+cp -a .repo/manifest.xml <备份目录>/manifest.xml.<旧manifest名>.bak   # 留底
+repo init -u ssh://<gerrit>/manifest -b smart -m manifest-smart.xml  # -u/-b 显式带上，别依赖 repo 的记忆
+# 切前：清掉会挡 checkout 的 dirty（见坑速查），并记下本地领先 commit
+repo forall -c 'git log --oneline origin/m/smart..HEAD'              # 逐仓记账：hash + Change-Id
+repo sync -c -j8        # background + notify 跑；**不加 -d**（只有 -d 会丢本地 commit）
+```
+
+验收（按序）：
+1. **repo 收尾语**：`repo sync has finished successfully.` = 全 checkout 成功；`Unable to fully sync the tree … Failing repos: <x>` = 只差那几仓，其余已同步完，别整个重跑
+2. `.repo/manifests/<X.xml>` 或 `repo manifest | grep -c '<project'` 数项目数（**不数 `.repo/manifest.xml`**，它是 stub）
+3. 每个本地领先 commit 逐个回查 Change-Id 还在（不带 `-d` 时 repo 对本地分支走 rebase：commit 保留、**hash 会变**）
+4. `git -C <关键仓> status -sb` 对齐、工作区干净
+
+**别依赖 rebase 保命**：带本地 commit 的仓在切 manifest 前先 `git format-patch`/bundle 备份 —— rebase 保留是实测行为，不是可依赖的保证。
+
+**manifest 归属以 project.conf 为准，别按名字猜**：同一棵树常并存多份 manifest（`manifest-smart.xml` 全集 vs `default.xml` 精简集），同名项目 revision 可能一致、项目数却差很多（如 150 vs 54）⇒ 切之前数一遍项目数、跟用户点名的 intent 对上再执行；`default.xml` 这类精简集切过去会让**几十个项目退出 manifest 管理**（目录不自动删，要 `repo prune` 才清）。
+
+### Step 0d: 切完 manifest 还要切分支（`repo start --all`）
+
+**切 manifest 不会改各仓所在分支**：sync 只把当前分支 rebase 到新 manifest revision，全树仍停在任务期分支（如 `hm6503_p348`）上，看着像「切好了」，其实常规工作分支（`project.conf` 记的那个，如 `hm6503`）还在原处、落后 m/smart。用户会拿「分支切了吗」验收，别只报 sync 成功。
+
+```bash
+repo start --all <常规分支>      # 整树切到常规工作分支
+```
+
+语义（repo v20241130 `project.py` `StartBranch`，读源码核过）：HEAD 已在该分支 → 直接返回；**分支已存在 → 只做 `git checkout -q <name> --`，不动分支指针**（已有分支安全，不会被重置）；分支不存在 → 从 manifest revision 新建（detached / NO BRANCH 的仓会被带上并建分支）。
+
+⚠️ 与 Step 3 的「勿 repo start」不冲突：Step 3 说的是**要冲掉本地 commit** 时 repo start 会检出同名旧分支、让回退白做；这里是要**回到常规工作分支**，本就保留分支原状，正是 repo start 的用途。
+
+验收三点：① 全树分支分布只剩 `<常规分支>`（用 Step 1 的直读法）；② 任务分支上那笔本地 commit 还在且**没被带走**：`git -C <repo> branch --contains <sha>` 只命中任务分支；③ 切完树**不再与 m/smart 齐平**（落在常规分支位置）——要追平再跑一次 `repo sync`（不带 `-d`，走 rebase 前进）。
+
 ## 意图取舍：冲掉本地改动 vs 保留（动手前先钉死）
 
 用户的默认期待是**冲掉**：终态 = 工作树是云端主干最新，本地只剩他明确要保留的那一笔。这里最贵的错误是「以为自己在保护用户工作」而默默保留 —— 用户会认为同步没生效，且他后续推送上不去时会被历史 commit 连累。
@@ -70,7 +108,16 @@ repo status 2>/dev/null | head -60   # 首屏会截断，仅参考
 repo forall -c 'echo "== $REPO_PROJECT"; git log --oneline origin/m/smart..HEAD 2>/dev/null | head -5'
 # 分支 vs detached 状态：
 repo forall -c 'echo "== $REPO_PROJECT"; git branch -vv | head -2'
+# 全树分支分布 / detached 计数 —— 秒级（不逐仓起 git；repo forall 在大仓 + HDD 上要几分钟）：
+find .repo/projects -name HEAD -not -path '*/logs/*' | while read -r f; do
+  p=${f#./.repo/projects/}; p=${p%.git/HEAD}; read -r a b < "$f"
+  if [ "$a" = "ref:" ]; then echo "${b#refs/heads/}|$p"; else echo "DETACHED|$p"; fi
+done | awk -F'|' '{print $1}' | sort | uniq -c | sort -rn
 ```
+
+⚠️ 上面这条必须带 `-not -path '*/logs/*'`：`-name HEAD` 会把每个仓的 `logs/HEAD`（reflog）一起捞进来，输出混入 `<sha> <author> <email> <ts>` 垃圾行、分支计数直接失真。
+
+⚠️ 全树 repo 命令（sync / status / forall）在**大仓 + HDD 上每条都是分钟级**：一次工具调用只跑一条，别串两条（会撞单次调用上限被硬中断，输出全丢）。
 
 ### Step 2: 云端基线确认
 ```bash
@@ -98,7 +145,9 @@ ssh -p 29418 <user>@<gerrit_host> gerrit query --format=JSON 'project:<proj> own
 ssh -p 29418 <user>@<gerrit_host> gerrit query 'change:<Change-Id>' --format=JSON --current-patch-set | grep -E '"number"|"status"'
 ```
 
-### Step 3: 删除重建分支（勿 repo start！）
+### Step 3: 删除重建分支（冲掉本地 commit 时勿 repo start！）
+
+（「勿 repo start」只针对**冲掉本地 commit** 这一场景；切 manifest 后回常规工作分支的正解就是 `repo start --all <分支>`，见 Step 0d。）
 ```bash
 # ⚠️ repo start <旧分支名> 会检出同名旧分支 = 旧 commit 复活。必须删了重建：
 git checkout -q --detach origin/m/smart
@@ -142,6 +191,12 @@ repo forall -c 'm=$(git status --porcelain | grep -v "^??" | head -1); [ -n "$m"
 | repo 拒签 `branch X is published (but not merged)` | sync 报 Cannot checkout，卡住有本地 commit 的仓（含 upstream 指向主干的本地分支） | `git checkout --detach origin/m/smart` 让 repo 放行 —— 但这**只是过路**，不是冲掉。分支去留按用户意图定：默认「同步」= 冲掉，之后必须 `git branch -D`（见《意图取舍》）|
 | `prior sync failed; rebase still in progress` | sync 报该仓无法 checkout | 先 `git rebase --abort`；rebase 中夹着的 commit 先用 `git format-patch -1 <sha> --stdout` 抢救成 patch 再 abort |
 | 把本地 dirty 改动当垃圾清掉 | 同步后编译炸（项目开关/交叉编译补丁被丢） | 清理前逐个 `git show origin/m/smart:<file>` 核主干是否有该改动：主干**没有** = 本机编译必需品，同步后 `git apply` 重打 |
+| 单个 dirty 文件挡住整仓 checkout | sync 报 `error: <repo>/: contains uncommitted changes` + `Cannot checkout m/smart/<repo>` + `Failing repos: <repo>`（**其余仓照常走完**，只卡这一格） | 先判该 dirty 是不是**脚本可再生**的产物（典型：`config/set_common_config.sh` 管的 `CONFIG_PROJECT_<项目> := true/false`）——可再生就 `git -C <repo> checkout -- <file>` 放行 sync，下次构建前跑一次脚本即回来；不可再生走《本机适配改动》存 patch 再重打。**别把可再生当不可再生，也别反过来自作主张丢手写改动** |
+| `index.lock` 已存在，checkout / 切分支被拒 | `fatal: Unable to create '…/.git/index.lock': File exists` + `error: <repo>/: cannot start <分支>`（**其余仓照常走完**，只卡这一格） | 先判僵尸还是活锁：`fuser -v <lock>` / `lsof <lock>` 无持有者 + 锁 mtime 远早于当前 + `pgrep -af git` 无该仓相关进程 = 崩溃残留 ⇒ `rm -f <repo>/.git/index.lock` 后重跑 `repo start <分支> <repo>`；有持有者就等，别抢 |
+| 大仓 checkout 被前台 timeout 掐断 | 单仓切换（device/soc/ 下的大 SDK 仓尤甚）跑几分钟没完，被掐断后 HEAD 仍 detached、看着像失败 | 大仓 + HDD 上 checkout 要重写大量文件，几分钟属正常 ⇒ **单仓操作也走 `background + notify`**；重试前先排除真因：`git -C <repo> ls-files -m`（tracked 改动数，0 = 不是脏）、目录属主（root 写的构建产物会挡）、有无锁 |
+| `repo forall` 漏掉 checkout 失败的仓 | 用它数「落后项目数」得 0，实际该仓 behind N | 别拿它下结论：看 repo 收尾语 + `git -C <repo> status -sb` 直查 |
+| 切 manifest 后数 `.repo/manifest.xml` 里没有项目 | 误判 `repo init -m X` 失败（其实成功） | `repo init -m X.xml` 会把 `.repo/manifest.xml` 写成 `<include name="X.xml"/>` 的 **stub（~500B）**，不是内容副本 ⇒ `grep -c '<project'` 得 0 属正常。数项目看 `.repo/manifests/<X.xml>` 或 `repo manifest` |
+| 整树 sync 被单次工具调用中断 | 树呈**半同步**（部分仓已到新 tip、其余仍在旧 revision），看着像「同步坏了」 | 整树 sync 远超单次前台工具调用上限（会被硬中断，传更大 timeout 无效）⇒ 一律 `background + notify` 跑；被打断后直接重跑（sync 幂等、增量），不要从零重建工作树 |
 | cherry-pick 验证用整树 diff | parent 不同带出全部基线差异（135 files 假象） | 同父链才 git diff；否则 git show --stat 对比文件集+行数+Change-Id |
 
 ## 本机适配改动：同步前核查 → 同步后重打

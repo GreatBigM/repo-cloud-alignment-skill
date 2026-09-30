@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## 1.2.0 (2026-09-30)
+
+### Added（manifest 切换全流程 + 09-30 实测坑）
+
+- **description/triggers 扩到 manifest 切换场景**：`repo init -m X` 换 manifest、整树 sync、切回常规分支、`repo start --all`、`index.lock`
+- **新增 Step 0c 切 manifest**：任务期冻结 manifest ↔ 常规 manifest 的整树动作流程（备份 `.repo/manifest.xml` → `repo init -u/-b/-m` 显式带全 → 切前清 dirty + 逐仓记本地领先 commit → `repo sync -c -j8` 后台跑、**不加 `-d`**）+ 四条验收（repo 收尾语判据 / 数项目别数 stub / Change-Id 回查 / 关键仓 status）；**manifest 归属以 `project.conf` 为准**——同名项目 revision 可能一致、项目数却差很多（如 `manifest-smart.xml` 150 vs `default.xml` 54），切到精简集会让几十个项目退出 manifest 管理（目录不自动删，要 `repo prune`）
+- **新增 Step 0d 切完 manifest 还要切分支**：`repo start --all <常规分支>` 语义（分支已存在 → 只 `git checkout --`、**不动指针**；不存在 → 从 manifest revision 新建）与三点验收；与 Step 3「冲掉本地 commit 时勿 repo start」的场景区分
+- **坑表新增六条（09-30 实测）**：单个 dirty 文件挡住整仓 checkout（先判是否脚本可再生的 `CONFIG_PROJECT_*`）/ `index.lock` 僵尸锁判定与清理（`fuser`/`lsof` 无持有者才 rm）/ 大仓 checkout 须 `background + notify` / **`repo forall` 漏掉 checkout 失败的仓**（拿它数「落后项目数」得假 0）/ `.repo/manifest.xml` 是 `<include>` stub（`grep -c '<project'` 得 0 属正常，数 `.repo/manifests/<X.xml>`）/ 整树 sync 被单次工具调用上限中断后呈半同步（幂等，直接重跑，勿从零重建）
+- **全树分支分布秒级查法**：直读 `.repo/projects/*/HEAD`（**必须 `-not -path '*/logs/*'`**，否则 reflog 混入导致分支计数失真）
+- 版本 1.1.3 → 1.2.0
+
 ## 1.1.3 (2026-09-29)
 
 ### Fixed
