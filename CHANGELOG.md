@@ -6,6 +6,7 @@
 - **`--target hermes,claude`（空格形式）从未生效**：解析只认 `--target=`，空格形式把值吞成空串后落进"非交互 = 装全部"分支——而 README / 用法行 / 脚本头部**三处文档全写的空格形式**。现两种形式都支持，且 `--target` 缺参数时直接报错退出（不再静默装全部）。
 - **备份落在 skills 扫描根之内**：旧版备份写成 `<skills>/<name>.bak.<时间戳>`，而 agent 按「含 SKILL.md 的目录」发现技能、不看目录名 ⇒ 备份被当成**第二个同名技能**加载（重名歧义下静默跳过其一）。现备份落 `<tool 根>/skills-backup/`（扫描根之外），README 与脚本尾注同步。
 - **挂上 pre-push 闸门（脱敏 + CHANGELOG 同步）**：`scripts/publish-check.py`（扫项目代号 / 内网 IP / MAC / 长 hash / 凭据 / 本机路径，自带 `--self-test`）+ `scripts/hooks/pre-push`；启用一次 `git config core.hooksPath scripts/hooks`。理由与脱敏规则同源：**靠人记必然回潮**，检查要做成"推送时自动拦"而不是"记得手动跑"。CHANGELOG 闸门名单 = SKILL.md / install.sh / scripts/ / references/。
+- **脱敏：正文里的项目代号与示例内网 IP 换占位符**——`scripts/publish-check.py` 挂上后首扫命中，逐条判定（另 4 处『凭据赋值』为误报：都是串口提示符 `Password:` 字面量与说明，无真实密钥）后替换：正文 / references 里的项目代号 → `<项目A>`（多处依次 A/B/C/D），模板示例里的内网 IP → 文档保留段 `192.0.2.x`。这些标识已随历史提交公开过，本次只保证**往后的版本不再含**；历史不回改——force push 也收不回（已 clone/fork/缓存的副本），脱敏的真实收益是往后不再泄漏。
 - 版本 1.2.0 → 1.2.1
 
 # CHANGELOG

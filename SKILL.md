@@ -10,7 +10,7 @@ metadata:
 
 # repo 多仓项目云端对齐
 
-场景：repo 管理的嵌入式多仓工程（如 hm6502_wifi），本地有 commit/改动，目标 = 强制对齐云端主干并丢弃全部本地改动；或需在「主干最新」与「manifest 锁定基线」间抉择。
+场景：repo 管理的嵌入式多仓工程（如 `<项目A>_wifi`），本地有 commit/改动，目标 = 强制对齐云端主干并丢弃全部本地改动；或需在「主干最新」与「manifest 锁定基线」间抉择。
 
 ## 核心原则
 
@@ -70,7 +70,7 @@ repo sync -c -j8        # background + notify 跑；**不加 -d**（只有 -d �
 
 ### Step 0d: 切完 manifest 还要切分支（`repo start --all`）
 
-**切 manifest 不会改各仓所在分支**：sync 只把当前分支 rebase 到新 manifest revision，全树仍停在任务期分支（如 `hm6503_p348`）上，看着像「切好了」，其实常规工作分支（`project.conf` 记的那个，如 `hm6503`）还在原处、落后 m/smart。用户会拿「分支切了吗」验收，别只报 sync 成功。
+**切 manifest 不会改各仓所在分支**：sync 只把当前分支 rebase 到新 manifest revision，全树仍停在任务期分支（如 `<项目A>_p348`）上，看着像「切好了」，其实常规工作分支（`project.conf` 记的那个，如 `<项目A>`）还在原处、落后 m/smart。用户会拿「分支切了吗」验收，别只报 sync 成功。
 
 ```bash
 repo start --all <常规分支>      # 整树切到常规工作分支
@@ -221,4 +221,4 @@ git -C <repo> apply --check $B/patches/<repo>_dirty.patch && git -C <repo> apply
 - `references/push-readiness-and-change-id-repair.md` — 拉齐后推送就绪体检、Change-Id 非法整批被拒的修复与自证
 - 推送侧流程（只推一笔保持 hash）→ gerrit-patch-flow skill
 - 提交格式/gerrit 规则 → gerrit-workflow skill
-- 编译产物验证 → hm6502-build-flash-test / embedded-build-artifact-verification
+- 编译产物验证 → `<项目A>-build-flash-test` / embedded-build-artifact-verification

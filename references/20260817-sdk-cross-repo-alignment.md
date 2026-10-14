@@ -2,7 +2,7 @@
 
 ## 场景
 
-hm6502_wifi 云端仓强制拉齐主干（kernel/c_mi_ipc 分支删除重建）后首次全量编译失败：
+`<项目A>_wifi` 云端仓强制拉齐主干（kernel/c_mi_ipc 分支删除重建）后首次全量编译失败：
 
 ```
 ai_detection/libai_detection.a(ai_detection_manager.c.o): In function `run_ai_capture_loop':
@@ -15,12 +15,12 @@ make: *** [Makefile:156: all] Error 2
 
 1. **引用点确认**：ai_detection_manager.c:483 `.phy_addr = (uint32_t)IMP_Buf_Vaddr2Paddr(yuv_buf)`（yuv 抓帧 buffer 物理地址转换）
 2. **头文件声明**：grep 全 SDK include 无声明 → API 不在本地 SDK 版本
-3. **SDK 路径真相源**：`toolchain/hm6502_cfg.cmake` → SMART_SDK_LIB_PATH = `third_party/rootfs/sdk/5.4.0_mxu2cve2/lib/uclibc`（**不是 7.2.0**！Anona=7.2.0，Anona_hm1009=7.2.0_t41_zm_zg——查错 SDK 会误判）
+3. **SDK 路径真相源**：`toolchain/<项目A>_cfg.cmake` → SMART_SDK_LIB_PATH = `third_party/rootfs/sdk/5.4.0_mxu2cve2/lib/uclibc`（**不是 7.2.0**！Anona=7.2.0，Anona_hm1009=7.2.0_t41_zm_zg——查错 SDK 会误判）
 4. **符号存在性**：nm 本地全部 libimp.a/.so = 0 匹配 → 本地确实没有
 5. **引入 commit**：`git log -S "IMP_Buf_Vaddr2Paddr"` → c8f298e（change 212583，MERGED，wulei，「yuv抓帧buffer调整内存分配到rmem」）——只改了 c_mi_ipc 一个仓，未同步 libimp
 6. **gerrit 搜 API 名**：`gerrit query 'message:IMP_Buf_Vaddr2Paddr'` 无结果 —— query message 只搜 commit message，**二进制内符号名搜不到**
 7. **关键转折**：rootfs 仓（third_party/rootfs）origin/m/smart **从未 fetch**（停在 80d05c86），fetch 后 → ec85593d，发现 SDK 更新 commit：
-   `37bf1620 [hm6502][hm6503][hm6801][hm6802] 更新SDK: 新增Ingenic-SDK-06beda2e-rmem物理地址虚拟地址转化接口`（含 5.4.0_mxu2cve2 libimp.a 二进制更新）
+   `37bf1620 [<项目A>][<项目B>][<项目C>][<项目D>] 更新SDK: 新增Ingenic-SDK-06beda2e-rmem物理地址虚拟地址转化接口`（含 5.4.0_mxu2cve2 libimp.a 二进制更新）
 8. **验证**：`git show origin/m/smart:sdk/5.4.0_mxu2cve2/lib/uclibc/libimp.a > /tmp/x.a && nm /tmp/x.a | grep IMP_Buf_Vaddr2Paddr` → `00001f50 T IMP_Buf_Vaddr2Paddr` ✓（云端主干 SDK 有该符号）
 
 ## 结论
