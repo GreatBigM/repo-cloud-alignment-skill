@@ -1,7 +1,7 @@
 ---
 name: repo-cloud-alignment
 description: repo 多仓项目云端对齐与 manifest 切换（-m）— 全仓对齐、分支重建、整树 sync 坑、交叉仓依赖诊断
-version: 1.2.4
+version: 1.2.5
 category: devops
 metadata:
   agent:
