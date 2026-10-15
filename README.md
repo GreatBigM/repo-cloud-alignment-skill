@@ -45,7 +45,18 @@ curl -fsSL https://raw.githubusercontent.com/GreatBigM/repo-cloud-alignment-skil
 - **精确复现某 Jenkins 构建**（增量对齐）：从构建 artifact 下载锁 revision 基线 manifest → 对比各仓 HEAD 只 checkout 差异仓 → 逐 change cherry-pick（MERGED change 被 repo download 拒绝时手动 cherry-pick）
 - **交叉仓 undefined reference 诊断**：引用点 → 头文件 → SDK 路径真相源（cfg.cmake）→ nm 符号 → 跨仓找提供者
 
+## 仓库结构
+
+```
+repo-cloud-alignment-skill/
+├── README.md       ← 本文件
+├── SKILL.md        ← 操作手册（仓库根即 skill 本体）
+├── CHANGELOG.md    ← 版本历史
+├── install.sh      ← 一键安装脚本
+├── references/     ← 参考：案例排查链 / 推送就绪体检
+└── scripts/        ← 发布闸门（脱敏 + 自检，**不随安装下发**）
+```
+
 ## 边界
 
 - 本 skill 只做**对齐/拉齐**（丢弃本地改动、复现构建），不做推送——推送见 [gerrit-patch-flow](https://gitee.com/GreatBigM/gerrit-patch-flow-skill)（对齐是对齐，推送是推送）。
-- 提交格式/gerrit 规则见 gerrit-workflow。
