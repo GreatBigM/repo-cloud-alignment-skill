@@ -1,7 +1,7 @@
 ---
 name: repo-cloud-alignment
 description: repo 多仓项目云端对齐与 manifest 切换（-m）— 全仓对齐、分支重建、整树 sync 坑、交叉仓依赖诊断
-version: 1.2.5
+version: 1.2.7
 category: devops
 metadata:
   agent:
@@ -214,11 +214,14 @@ git -C <repo> apply --check $B/patches/<repo>_dirty.patch && git -C <repo> apply
 
 判定规则：主干无该改动 → 本机必需品；主干已有同效改动 → 以主干为准。
 
+**备份前先分三类，否则 patch 里全是噪声**：手写改动（必存 patch）/ autotools 可再生文件（`aclocal.m4`、`configure` — autoreconf 产物，丢）/ 构建产物（`third_party/libunwind` 那类 o 文件与 generated 目录，丢）。实测一次对齐里 139 tracked + 268 untracked 全是构建产物，白占备份目录还让「丢了什么」说不清。
+
 **但「核查」不等于「自作主张保留」**：核查的目的是**能告诉用户他会丢什么、以后怎么恢复**，而不是替他决定留。用户明确说冲掉时，终态就是纯云端（这些 patch 只存备份目录），并在交付时点明「它们是编本项目的必需品，下次编译前这样重打一行」—— 把选择权交回用户，把恢复命令递到他手上。
 
 ## 参考
 - `references/20260817-sdk-cross-repo-alignment.md` — IMP_Buf_Vaddr2Paddr 案例完整排查链
 - `references/push-readiness-and-change-id-repair.md` — 拉齐后推送就绪体检、Change-Id 非法整批被拒的修复与自证
 - 推送侧流程（只推一笔保持 hash）→ gerrit-patch-flow skill
+- 两个构建之间的差异归因（找元凶 patch：changeid+manifest 双源比对、三层筛、候选排序+证伪清单）→ build-diff-attribution skill
 - 提交格式 / gerrit 规则 → 已内嵌于 gerrit-patch-flow skill
 - 编译产物验证 → 本仓《Step 4: 编译门禁》与《交叉仓 undefined reference 诊断》验证链

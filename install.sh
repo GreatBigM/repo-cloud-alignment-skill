@@ -12,7 +12,7 @@ REPO_URL="https://gitee.com/GreatBigM/repo-cloud-alignment-skill.git"
 SKILL_NAME="repo-cloud-alignment"
 COPY_DIRS="references"
 
-get_version() { grep -m1 '^version:' "$1" 2>/dev/null | sed 's/^version:[[:space:]]*//' | tr -d '"'\'' ' || true; }
+get_version() { grep -m1 '^version:' "$1" 2>/dev/null | sed -e 's/^version:[[:space:]]*//' -e "s/[\"'[:space:]]//g" || true; }
 version_gt() { [ "$1" != "$2" ] && [ -n "$2" ] && [ "$(printf '%s\n%s\n' "$2" "$1" | sort -V | head -1)" = "$2" ]; }
 
 # ─── 参数解析 ──────────────────────────────────────────────────────
@@ -80,6 +80,13 @@ install_one() {
     fi
 
     mkdir -p "${dest}"
+    # 清理语义（2026-10-22）：副本是纯复制品，先清掉已下线文件，否则删掉的支持文件会永远残留
+    for d in ${COPY_DIRS}; do
+        rm -rf "${dest:?}/${d}"
+    done
+    if [ -n "${COPY_SCRIPTS:-}" ]; then
+        rm -rf "${dest:?}/scripts"
+    fi
     cp "${TMP}/repo/SKILL.md" "${dest}/"
     for d in ${COPY_DIRS}; do
         [ -d "${TMP}/repo/${d}" ] && cp -r "${TMP}/repo/${d}" "${dest}/"

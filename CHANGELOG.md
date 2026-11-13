@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.2.7 (2026-11-14)
+
+### Added
+- **备份前先分三类**：手写改动（必存 patch）／autotools 可再生文件（`aclocal.m4`、`configure`，丢）／构建产物（`third_party/libunwind` 那类 .o 与 generated 目录，丢）。实测一次对齐里 139 tracked + 268 untracked 全是构建产物，白占备份且说不清丢了什么。
+- 交叉引用 `build-diff-attribution`：两版构建行为差异归因（changeid+manifest 双源比对、三层筛、证伪清单）。
+
+### Fixed
+- 版本号与安装副本对齐（此前 Hermes/Claude 侧 1.2.5 内容领先、发布仓 1.2.6 缺上述两段）。
+
+## 1.2.6 (2026-10-22)
+
+### Fixed
+- **install.sh 清理语义**：拷贝前先清空 `COPY_DIRS`（及 `COPY_SCRIPTS`）对应目录——副本是纯复制品，先清后拷，避免已下线的支持文件在安装副本里永久残留
+- **`get_version` 版本号解析**：旧实现 `tr -d '"'\'' '` 里的 `\x27` 不是 tr 转义，被当成字面字符集把版本号里的数字一起删（`2.13.0` → `.13.0`）；改用 `sed` 去引号与空白
+
+- 版本 1.2.5 → 1.2.6
+
 ## 1.2.5 (2026-10-15)
 
 ### Changed
